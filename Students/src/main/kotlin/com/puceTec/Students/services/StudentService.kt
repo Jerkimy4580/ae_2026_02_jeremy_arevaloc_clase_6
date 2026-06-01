@@ -3,45 +3,38 @@ package com.puceTec.Students.services
 import com.puceTec.Students.dto.StudentRequest
 import com.puceTec.Students.dto.StudentResponse
 import com.puceTec.Students.entities.Student
+import com.puceTec.Students.exceptions.EmailAlreadyExistsException
+import com.puceTec.Students.mappers.toEntity
+import com.puceTec.Students.mappers.toResponse
 import com.puceTec.Students.repositories.StudentRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
 class StudentService(
-    private val studentRepository: StudentRepository
+    private val repository: StudentRepository
 ) {
-
     private val logger = LoggerFactory.getLogger(StudentService::class.java)
 
     fun createStudent(request: StudentRequest): StudentResponse {
-        logger.info("Creating student ${request.name}")
+        logger.info("Creando estudiante ${request.name}... verificando email")
 
-        val studentEntity = Student(
-            name = request.name,
-            email = request.email
-        )
+        if (repository.existsByEmail(request.email)) {
+            throw EmailAlreadyExistsException("El email ya existe")
+        }
 
-        val savedStudent = studentRepository.save(studentEntity)
+        val studentToSave = request.toEntity()
+        val savedStudent = repository.save(studentToSave)
+        logger.info("Guardando estudiante con el id: ${savedStudent.id}")
 
-        return StudentResponse(
-            id = savedStudent.id!!,
-            name = savedStudent.name,
-            email = savedStudent.email ?: ""
-        )
+        return savedStudent.toResponse()
     }
 
     fun getAllStudents(): List<StudentResponse> {
-        logger.info("Getting all students")
-
-        val savedStudents = studentRepository.findAll()
-
-        return savedStudents.map { student ->
-            StudentResponse(
-                id = student.id!!,
-                name = student.name,
-                email = student.email ?: ""
-            )
+        logger.info("Tomando todos los estudiantes")
+        val students = repository.findAll()
+        return students.map { miEstudiante: Student ->
+            miEstudiante.toResponse()
         }
     }
 }
